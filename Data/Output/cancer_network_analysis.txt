@@ -1,0 +1,13 @@
+	Number of nodes:	7842	
+	Number of miRNAs:	1719	
+	Number of TFs:	850	
+	Number of mRNAs:	5273	
+	
+	Number of edges:	171459	
+	Number of miRNA-TF edges:	23037	
+	Number of miRNA-mRNA edges:	105019	
+	Number of TF-miRNA edges:	30096	
+	Number of TF-TF edges:	1235	
+	Number of TF-mRNA edges:	815	
+	Number of mRNA-mRNA edges:	11257	
+

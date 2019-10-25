@@ -1,0 +1,43 @@
+"miRNA_Group","Group_Size","Total_Influence"
+"hsa-miR-96-5p hsa-miR-342-5p",2,48
+"hsa-miR-130a-5p hsa-miR-34a-5p hsa-miR-22-5p hsa-miR-222-5p hsa-miR-223-5p",5,48
+"hsa-miR-130a-5p hsa-miR-22-5p hsa-miR-222-5p hsa-miR-223-5p hsa-miR-6797-5p",5,48
+"hsa-miR-130a-5p hsa-miR-34a-5p hsa-miR-22-5p",3,47
+"hsa-miR-130a-5p hsa-miR-22-5p hsa-miR-146a-5p",3,47
+"hsa-miR-130a-5p hsa-miR-22-5p hsa-miR-6797-5p",3,47
+"hsa-miR-34a-5p hsa-miR-22-5p hsa-miR-222-5p",3,47
+"hsa-miR-34a-5p hsa-miR-22-5p hsa-miR-223-5p",3,47
+"hsa-miR-34a-5p hsa-miR-22-5p hsa-miR-6797-5p",3,47
+"hsa-miR-130a-5p hsa-miR-34a-5p hsa-miR-222-5p hsa-miR-342-5p hsa-miR-6797-5p",5,47
+"hsa-miR-130a-5p hsa-miR-34a-5p hsa-miR-342-5p hsa-miR-223-5p hsa-miR-6797-5p",5,47
+"hsa-miR-130a-5p hsa-miR-22-5p",2,46
+"hsa-miR-34a-5p hsa-miR-22-5p",2,46
+"hsa-miR-22-5p hsa-miR-96-5p",2,46
+"hsa-miR-130a-5p hsa-miR-34a-5p hsa-miR-342-5p hsa-miR-6797-5p",4,46
+"hsa-miR-130a-5p hsa-miR-34a-5p hsa-miR-96-5p hsa-miR-223-5p hsa-miR-6797-5p",5,45
+"hsa-miR-130a-5p hsa-miR-34a-5p hsa-miR-222-5p hsa-miR-223-5p hsa-miR-6797-5p",5,45
+"hsa-miR-130a-5p hsa-miR-222-5p hsa-miR-342-5p",3,44
+"hsa-miR-222-5p hsa-miR-342-5p hsa-miR-223-5p",3,44
+"hsa-miR-130a-5p hsa-miR-342-5p",2,43
+"hsa-miR-222-5p hsa-miR-342-5p",2,43
+"hsa-miR-22-5p hsa-miR-222-5p hsa-miR-223-5p",3,43
+"hsa-miR-22-5p hsa-miR-222-5p hsa-miR-6797-5p",3,43
+"hsa-miR-96-5p hsa-miR-222-5p hsa-miR-146a-5p",3,43
+"hsa-miR-130a-5p hsa-miR-34a-5p hsa-miR-222-5p hsa-miR-6797-5p",4,43
+"hsa-miR-130a-5p hsa-miR-34a-5p hsa-miR-223-5p hsa-miR-6797-5p",4,43
+"hsa-miR-34a-5p hsa-miR-96-5p hsa-miR-223-5p hsa-miR-6797-5p",4,43
+"hsa-miR-342-5p",1,42
+"hsa-miR-22-5p hsa-miR-222-5p",2,42
+"hsa-miR-96-5p hsa-miR-222-5p",2,42
+"hsa-miR-34a-5p hsa-miR-96-5p hsa-miR-223-5p",3,42
+"hsa-miR-130a-5p",1,39
+"hsa-miR-222-5p",1,39
+"hsa-miR-22-5p",1,35
+"hsa-miR-96-5p hsa-miR-146a-5p hsa-miR-223-5p",3,34
+"hsa-miR-96-5p hsa-miR-146a-5p",2,33
+"hsa-miR-96-5p hsa-miR-223-5p",2,33
+"hsa-miR-96-5p",1,32
+"hsa-miR-34a-5p hsa-miR-146a-5p hsa-miR-223-5p",3,4
+"hsa-miR-146a-5p hsa-miR-223-5p",2,3
+"hsa-miR-146a-5p",1,2
+"hsa-miR-34a-5p hsa-miR-223-5p",2,2
