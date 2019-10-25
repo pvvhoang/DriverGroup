@@ -102,15 +102,17 @@ load(paste(rootDir, "/Data/BRCA_matchedData_full.RData", sep = ""))
 # Load the normal expression data
 load(paste(rootDir, "/Data/BRCA_matchedData_normal_samples_full.RData", sep = ""))
 
-# Retrieve all genes associated with GO:0008283 (cell population proliferation)
-ensembl = useMart("ensembl", dataset="hsapiens_gene_ensembl") # Use human ensembl annotations
-# Get gene symbol for all genes annotated with GO:0008283
-geneData <- getBM(attributes=c('hgnc_symbol'),
-                   filters = 'go', values = 'GO:0008283', mart = ensembl)
-# Only keep genes in BRCA_matchedData
-geneData <- geneData[which(geneData[,1] %in% colnames(BRCA_matchedData$mRNAs)),1]
-# Write file
-write.csv(geneData, paste(outDir, "/proGeneData.csv", sep = ""), row.names = FALSE)
+# # Retrieve all genes associated with GO:0008283 (cell population proliferation)
+# ensembl = useMart("ensembl", dataset="hsapiens_gene_ensembl") # Use human ensembl annotations
+# # Get gene symbol for all genes annotated with GO:0008283
+# geneData <- getBM(attributes=c('hgnc_symbol'),
+#                    filters = 'go', values = 'GO:0008283', mart = ensembl)
+# # Only keep genes in BRCA_matchedData
+# geneData <- geneData[which(geneData[,1] %in% colnames(BRCA_matchedData$mRNAs)),1]
+# # Write file
+# write.csv(geneData, paste(outDir, "/proGeneData.csv", sep = ""), row.names = FALSE)
+geneData <- read.csv(paste(outDir, "/proGeneData.csv", sep = ""), as.is = TRUE)
+geneData <- unlist(geneData)
 
 # Get PPI network
 edges <- read_excel(paste(rootDir, "/Data/PPI.xls",
