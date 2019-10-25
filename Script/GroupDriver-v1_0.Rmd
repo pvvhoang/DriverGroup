@@ -1,0 +1,429 @@
+---
+output:
+  html_document:
+    df_print: paged
+---
+
+# GroupDriver: A novel method for identifying group-based cancer drivers
+
+Vu VH Pham^1^, Lin Liu^1^, Cameron P Bracken^2,3^, Gregory J Goodall^2,3^, Jiuyong Li^1^ and Thuc D Le^1^
+
+^1^ School of Information Technology and Mathematical Sciences, University of South Australia, Mawson Lakes, SA 5095, Australia
+
+^2^ Centre for Cancer Biology, an alliance of SA Pathology and University of South Australia, Adelaide, SA 5000, Australia
+
+^3^ Department of Medicine, The University of Adelaide, Adelaide, SA 5005, Australia \newline \newline \newline
+
+This is the script to run the proposed method. Please remember to include the script of functions from the file GroupDriverFunctions.R to run this script.
+
+## The script
+
+This is the script of the proposed method in identifying group-based cancer drivers.
+
+To run the script, please prepare below input files and reset environment variables in the script.
+
+The input files include the followings and are put in the folder "rootDir/Data" (rootDir is an environment variable):
+
+* PPI.xls - Protein protein interaction network
+
+* Browse Transcription Factors hg19 - resource_browser.csv - Transcription factors (TFs)
+
+* hsa.tsv - TransmiR dataset for TF-miRNA interactions
+
+* miRTarBase_v6.1+TarBase_v7.0+miRWalk_v2.0.csv - Datasets for miRNA-mRNA and miRNA-TF interactions
+
+* TargetScan_7.0.csv - Dataset for miRNA-mRNA and miRNA-TF interactions
+
+* BRCA_matchedData_full.RData - Tumour expression data
+
+* BRCA_matchedData_normal_samples_full.RData - Normal expression data
+
+This script uses a library from the paper Liu, Y.-Y., et al. (2011). "Controllability of complex networks." Nature 473: 167. The code of the library can be downloaded from https://scholar.harvard.edu/yyl/code. You need to build the code before running this script.
+
+```{r, message=FALSE, warning=FALSE, eval=FALSE}
+#=========================================================================
+#=========================================================================
+# GroupDriver: A novel method for identifying group-based cancer drivers
+#=========================================================================
+#=========================================================================
+# Clear the environment
+rm(list = ls())
+
+# Load necessary libraries if any
+library(readxl)
+library(miRLAB)
+library(miRBaseConverter)
+library(ggplot2)
+library(varhandle)
+library(scales)
+library(reshape)
+library(plyr)
+library(RColorBrewer)
+library(tidyverse)
+library(xtable)
+library(arrangements)
+library(biomaRt)
+library(foreach)
+library(doParallel)
+library(pcalg)
+library(ParallelPC)
+library(CancerSubtypes)
+library(survcomp)
+library(Biobase)
+library(mlr)
+library(randomForestSRC)
+library(Hmisc)
+
+#---------------------------------------
+# Set environment variables if any
+# Please remember to create necessary folders
+rootDir <- "C:/Users/phavy022/MyDoc/09GroupBased/Experiment" # And put the input files
+  # in "rootDir/Data"
+# rootDir <- "R/pro"
+controlDir <- "C:/MinGW/bin" # Put here the library from 
+  # the paper "Controllability of complex networks."
+outDir <- "C:/Users/phavy022/MyDoc/09GroupBased/Experiment/Data/Output" # Output folder
+# outDir <- "R/pro"
+numCores <- 4 # Number of cores to be used
+#---------------------------------------
+
+# Include the script of functions
+source(paste(rootDir, "/Script/GroupDriverFunctions.R", sep=""))
+# source(paste(rootDir, "/GroupDriverFunctions.R", sep=""))
+source(paste(rootDir, "/Script/Prognosis.R", sep=""))
+
+# Main script
+#================================================================
+# (1) Building the network for breast cancer
+#================================================================
+# Load the tumor expression data
+load(paste(rootDir, "/Data/BRCA_matchedData_full.RData", sep = ""))
+
+# Load the normal expression data
+load(paste(rootDir, "/Data/BRCA_matchedData_normal_samples_full.RData", sep = ""))
+
+# Retrieve all genes associated with GO:0008283 (cell population proliferation)
+ensembl = useMart("ensembl", dataset="hsapiens_gene_ensembl") # Use human ensembl annotations
+# Get gene symbol for all genes annotated with GO:0008283
+geneData <- getBM(attributes=c('hgnc_symbol'),
+                   filters = 'go', values = 'GO:0008283', mart = ensembl)
+# Only keep genes in BRCA_matchedData
+geneData <- geneData[which(geneData[,1] %in% colnames(BRCA_matchedData$mRNAs)),1]
+# Write file
+write.csv(geneData, paste(outDir, "/proGeneData.csv", sep = ""), row.names = FALSE)
+
+# Get PPI network
+edges <- read_excel(paste(rootDir, "/Data/PPI.xls",
+                          sep = ""), sheet = 1)
+interactions <- edges[, c(1, 3)]
+colnames(interactions) <- c("cause", "effect")
+interactions <- interactions[which(interactions$cause %in% colnames(BRCA_matchedData$mRNAs)),]
+interactions <- interactions[which(interactions$effect %in% colnames(BRCA_matchedData$mRNAs)),]
+nodes <- unique(union(interactions$cause, interactions$effect))
+# Combine with proliferation genes
+nodes <- unique(union(nodes, geneData))
+
+# TFs: Download the list from http://fantom.gsc.riken.jp/5/sstar/Browse_Transcription_Factors_hg19
+tfs <- read.csv(paste(rootDir, "/Data/Browse Transcription Factors hg19 - resource_browser.csv",
+                      sep = ""))
+i <- which(levels(tfs$Symbol) %in% nodes)
+tfData <- BRCA_matchedData$mRNAs[, levels(tfs$Symbol)[i]]
+
+# Update cancer data of mRNAs
+BRCA_matchedData$mRNAs <- BRCA_matchedData$mRNAs[,
+  nodes[which(!(nodes %in% levels(tfs$Symbol)[i]))]]
+mRNAsData_Cancer <-  BRCA_matchedData$mRNAs
+
+# Get the cancer data of miRNAs
+miRNAsData_Cancer <-  BRCA_matchedData$miRs
+
+# Combine data
+nomiR <- ncol(BRCA_matchedData$miRs)
+nomR <- ncol(BRCA_matchedData$mRNAs)
+noTF <- ncol(tfData)
+cancer_data <- cbind(miRNAsData_Cancer, mRNAsData_Cancer, tfData)
+
+# Free the memory
+gc()
+
+# Build the network
+cancer_network <- buildWeightedNetworkWithmiRs(interactions, nomiR, nomR, noTF, cancer_data, rootDir)
+
+# Save the network
+write.csv(cancer_network, paste(outDir, "/cancer_network.csv", sep = ""), row.names = FALSE)
+
+# Analyse network
+# cancer_network <- read.csv(paste(outDir, "/cancer_network.csv", sep = ""))
+analyseNetwork(nomiR, nomR, noTF, cancer_network, cancer_data,
+              paste(outDir, "/cancer_network_analysis.txt", sep = ""))
+
+# Compute node weight
+miRNAsData_Normal <-  BRCA_matchedData_normal_samples$miRs
+mRNAsData_Normal <- BRCA_matchedData_normal_samples$mRNAs[, colnames(mRNAsData_Cancer)]
+tfData_Normal <- BRCA_matchedData_normal_samples$mRNAs[, colnames(tfData)]
+normal_data <- cbind(miRNAsData_Normal, mRNAsData_Normal, tfData_Normal)
+nodeList <- computeNodeWeight(cancer_data, normal_data)
+# Save file
+write.csv(nodeList, paste(outDir, "/nodeList.csv", sep = ""), row.names = TRUE)
+
+#================================================================
+# (2) Identifying critical nodes
+#================================================================
+# Analyse controllability of the network
+# Read the network with miRNAs
+interactions <- read.csv(paste(outDir, "/cancer_network.csv",
+                      sep = ""))
+# Write the edges of the network for analysing controllability
+write.table(interactions[,1:2], paste(outDir, "/Controllability/edges.dat", sep = ""),
+          row.names = FALSE, col.names=FALSE, quote=FALSE)
+# Run the controllability analysis
+cmd <- paste(controlDir, "/parse.exe ", outDir, 
+             "/Controllability/edges.dat", sep = "")
+system(cmd)
+cmd <- paste(controlDir, "/controllability_analysis.exe ", outDir, 
+             "/Controllability/edges.dat", sep = "")
+system(cmd)
+# Analyse controllability of the network and output in a file
+analyseControllability(paste(outDir, "/Controllability/edges.dat.output", sep = ""),
+  paste(outDir, "/analyseControllability.txt", sep = ""))
+
+# Identify critical nodes in the network
+# Read the result
+nodetype <- read.table(paste(outDir, "/Controllability/edges.dat.nodetype", sep = ""))
+colnames(nodetype) <- c("Name", "K", "Kin", "Kout", "TypeI", "TypeII")
+# Critical nodes of the network
+critical_nodes <- nodetype[which(nodetype$TypeI == 0),]
+# Save file
+write.csv(critical_nodes, paste(outDir, "/critical_nodes.csv", sep = ""),
+          row.names = FALSE)
+
+# Classify miRNAs and TFs/genes
+critical_nodes$Type <- "coding"
+critical_nodes[which(critical_nodes[, "Name"] %in%
+                                 colnames(cancer_data)[1:nomiR]), "Type"] <- "non-coding"
+# Coding critical nodes
+coding_critical_nodes <- critical_nodes[
+  which(critical_nodes[, "Type"] == "coding"),]
+# Non-coding critical nodes
+noncoding_critical_nodes <- critical_nodes[
+  which(critical_nodes[, "Type"] == "non-coding"),]
+# Write files
+write.csv(coding_critical_nodes,
+          paste(outDir, "/coding_critical_nodes.csv", sep = ""), row.names = FALSE)
+write.csv(noncoding_critical_nodes,
+          paste(outDir, "/noncoding_critical_nodes.csv", sep = ""), row.names = FALSE)
+
+#================================================================
+# (3) Evaluate the influence of k-way combinations on cell population proliferation genes
+#================================================================
+# Number of miRNAs used to analyse
+n_max <- 10
+# Number of top influences
+# n_top <- 5
+
+# Define k-way combinations of miRNAs
+# Get candidate miRNAs
+candidate_miRNAs <- read.csv(paste(outDir, "/noncoding_critical_nodes.csv",
+                      sep = ""), as.is = TRUE)
+candidate_miRNAs <- candidate_miRNAs[order(candidate_miRNAs$Kout, decreasing = TRUE),]
+candidate_miRNAs <- candidate_miRNAs[1:n_max,1]
+n_miRNAs <- length(candidate_miRNAs)
+# Get k-way combinations of miRNAs, k from 1 to n_miRNAs
+activeSets <- NULL
+for (i in 1:n_miRNAs) {
+  sets <- combinations(candidate_miRNAs, k=i)
+  sets <- split(sets, row(sets))
+  activeSets <- c(activeSets, sets)
+}
+
+# Influence of active sets
+n_activeSets <- length(activeSets)
+inf <- matrix(nrow = n_activeSets, ncol = 2)
+colnames(inf) <- c("miRNA_Group", "Influence")
+
+# Normalise node weight so that it is in [0,1]
+nodes <- read.csv(paste(outDir, "/nodeList.csv",
+                      sep = ""), as.is = TRUE)
+maxNodeWeight <- max(abs(nodes[,2]))
+nodes[,2] <- nodes[,2]/maxNodeWeight
+
+# Normalise edge weight
+network <- read.csv(paste(outDir, "/cancer_network.csv", sep = ""), as.is = TRUE)
+network <- normaliseEdgeWeight(network)
+
+# Proliferation genes
+geneData <- read.csv(paste(outDir, "/proGeneData.csv", sep = ""), as.is = TRUE)
+
+# Evaluate influence
+registerDoParallel(numCores)  # Use multi cores, set to the number of cores
+r <- foreach (i=1:n_activeSets, .combine = c) %dopar% {
+  evaluateInfluence(activeSets[i], geneData, network, nodes)
+}
+for (i in 1:n_activeSets) {
+  inf[i,1] <- paste(activeSets[[i]], collapse=" ")
+  inf[i,2] <- r[i]
+}
+write.csv(inf, paste(outDir, "/inf.csv", sep = ""), row.names = FALSE)
+stopImplicitCluster() # Clean up the cluster
+
+# Identify miRNA groups which regulate cell proliferation in breast cancer
+candidateGroups <- read.csv(paste(outDir, "/inf.csv", sep = ""), as.is = TRUE)
+candidateGroups <- candidateGroups[which(candidateGroups$Influence > 0),]
+minInfluence <- min(candidateGroups$Influence)
+maxInfluence <- max(candidateGroups$Influence)
+r <- NULL
+i <- maxInfluence
+while(i >= minInfluence) {
+  currentGroups <- candidateGroups[candidateGroups$Influence == i,]
+  n_currentGroups <- nrow(currentGroups)
+  if(n_currentGroups > 1) {
+    ind <- selectCandidates(currentGroups)
+    currentGroups <- currentGroups[which(ind[] == "Validated"),]
+    r <- rbind(r, currentGroups)
+  } else if (n_currentGroups == 1) {
+    r <- rbind(r, currentGroups)
+  }
+  i <- i - 1
+}
+infCandidateGroups <- r[which(selectCandidates(r) ==  "Validated"),]
+write.csv(infCandidateGroups, paste(outDir, "/infCandidateGroups.csv", sep = ""), row.names = FALSE)
+
+# Add number column
+inf <- read.csv(paste(outDir, "/infCandidateGroups.csv", sep = ""), as.is = TRUE)
+n_inf <- nrow(inf)
+inf$Group_Size <- 0
+for (i in 1:n_inf) {
+  miRs <- inf[i,1]
+  miRs <- strsplit(miRs, split=' ', fixed=TRUE)
+  inf[i,3] <- length(miRs[[1]])
+}
+inf$Total_Influence <- inf$Influence
+inf <- inf[,-2]
+write.csv(inf, paste(outDir, "/infCandidateGroups.csv", sep = ""),
+          row.names = FALSE)
+
+#================================================================
+# (4) DREAM4/jointIda - synthetic data
+#================================================================
+
+# Constants
+n_networks <- 5
+
+# Gold standard
+for (i_net in 1:n_networks) {
+  # The gold-standard
+  gold <- getGoldStandard(rootDir, i_net, topk=100)
+  # Write to file
+  write.table(gold, file = paste(outDir, "/gold_all_", i_net, ".csv", sep=""), append = FALSE,
+            quote = FALSE, sep = ",",
+            eol = "\n", na = "NA", dec = ".", row.names = FALSE,
+            col.names = FALSE)
+}
+
+# jointIda
+for (i_net in 1:n_networks) {
+  # jointIda
+  jointIda_RRC <- jointIdaForGroup(rootDir, i_net, topk=100, technique = "RRC")
+  jointIda_MCD <- jointIdaForGroup(rootDir, i_net, topk=100, technique = "MCD")
+  
+  # Write to file
+  write.table(jointIda_RRC, file = paste(outDir, "/jointIda_RRC_all_", i_net, ".csv", sep=""), append = FALSE,
+            quote = FALSE, sep = ",",
+            eol = "\n", na = "NA", dec = ".", row.names = FALSE,
+            col.names = FALSE)
+  write.table(jointIda_MCD, file = paste(outDir, "/jointIda_MCD_all_", i_net, ".csv", sep=""), append = FALSE,
+            quote = FALSE, sep = ",",
+            eol = "\n", na = "NA", dec = ".", row.names = FALSE,
+            col.names = FALSE)
+  
+}
+
+# influence maximisation
+nodeWeight <- 0.3
+for (i_net in 1:n_networks) {
+  # influence maximisation
+  inf_max <- getInfluenceForDREAMData(rootDir, i_net, nodeWeight)
+  
+  # Write to file
+  saveRDS(inf_max, file = paste(outDir, "/inf_max_", i_net, ".rds", sep=""))
+}
+
+# Compare jointIda, influence maximisation, and random
+set.seed(1)
+for (i_net in 1:n_networks) {
+  print(paste("Network ", i_net, ":", sep = ""))
+  
+  gold <- read.csv(file = paste(outDir, "/gold_all_", i_net, ".csv", sep=""), sep = ",", header = FALSE)
+  jointIda <- read.csv(file = paste(outDir, "/jointIda_MCD_all_", i_net, ".csv", sep=""), sep = ",", header = FALSE)
+  inf_max <- readRDS(file = paste(outDir, "/inf_max_", i_net, ".rds", sep=""))
+  
+  # nCases <- nrow(gold)
+  # jointIda_win <- 0
+  # inf_max_win <- 0
+  # for (i in 1:nCases) {
+  #   noGene <- length(inf_max[[i]]) - 2
+  #   if(noGene > 0) {
+  #     jointIda_validated <- length(intersect(as.numeric(gold[i, 3:(2+noGene)]),
+  #                                                as.numeric(jointIda[i, 3:(2+noGene)])))
+  #     inf_max_validated <- length(intersect(as.numeric(gold[i, 3:(2+noGene)]),
+  #                                           inf_max[[i]][3:(2+noGene)]))
+  #     if(jointIda_validated > inf_max_validated) {
+  #       jointIda_win <- jointIda_win + 1
+  #     } else if(jointIda_validated < inf_max_validated) {
+  #       inf_max_win <- inf_max_win + 1
+  #     } else {
+  #       jointIda_win <- jointIda_win + 1
+  #       inf_max_win <- inf_max_win + 1
+  #     }
+  #     # print(paste("Case ", i, " - Number of gene targets: ", noGene, "/ jointIda identifies: ", jointIda_validated,
+  #     #            "/ The proposed method identifies: ", inf_max_validated, sep = ""))
+  #   } else {
+  #     jointIda_win <- jointIda_win + 1
+  #     inf_max_win <- inf_max_win + 1
+  #     # print(paste("Case ", i, " - There is no gene target.", sep = ""))
+  #   }
+  # }
+  # 
+  # print(paste("Total cases: ", nCases, sep = ""))
+  # print(paste("jointIda wins: ", jointIda_win, " cases", sep = ""))
+  # print(paste("The proposed method wins: ", inf_max_win, " cases", sep = ""))
+  
+  nCases <- nrow(gold)
+  jointIda_win <- 0
+  inf_max_win <- 0
+  random_win <- 0
+  for (i in 1:nCases) {
+    noGene <- length(inf_max[[i]]) - 2
+    if(noGene > 0) {
+      jointIda_validated <- length(intersect(as.numeric(gold[i, 3:(2+noGene)]),
+                                                 as.numeric(jointIda[i, 3:(2+noGene)])))
+      inf_max_validated <- length(intersect(as.numeric(gold[i, 3:(2+noGene)]),
+                                            inf_max[[i]][3:(2+noGene)]))
+      random_validated <- getRandomValidated(as.numeric(gold[i,]), noGene)
+      maxVal <- max(jointIda_validated, inf_max_validated, random_validated)
+      if(jointIda_validated == maxVal) {
+        jointIda_win <- jointIda_win + 1
+      }
+      if(inf_max_validated == maxVal) {
+        inf_max_win <- inf_max_win + 1
+      }
+      if (random_validated == maxVal) {
+        random_win <- random_win + 1
+      }
+      print(paste("Case ", i, " - Number of gene targets: ", noGene, "/ jointIda identifies: ", jointIda_validated,
+                "/ The proposed method identifies: ", inf_max_validated, "/ Random: ", random_validated, sep = ""))
+    } else {
+      jointIda_win <- jointIda_win + 1
+      inf_max_win <- inf_max_win + 1
+      random_win <- random_win + 1
+      # print(paste("Case ", i, " - There is no gene target.", sep = ""))
+    }
+  }
+  
+  print(paste("Total cases: ", nCases, sep = ""))
+  print(paste("jointIda wins: ", jointIda_win, " cases", sep = ""))
+  print(paste("The proposed method wins: ", inf_max_win, " cases", sep = ""))
+  print(paste("Random method wins: ", random_win, " cases", sep = ""))
+}
+
+```
