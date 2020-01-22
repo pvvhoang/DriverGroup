@@ -1,4 +1,4 @@
-GroupDriver: A novel method for identifying group-based coding and non-coding cancer drivers
+<b>GroupDriver: A novel method for identifying group-based coding and non-coding cancer drivers</b>
 
 Vu VH Pham (1), Lin Liu (1), Cameron P Bracken (2,3), Gregory J Goodall (2,3), Jiuyong Li (1), and Thuc D Le (1)
 (1) School of Information Technology and Mathematical Sciences, University of South Australia, Mawson Lakes, 5095, Australia
@@ -20,4 +20,3 @@ The data are in the Data folder and include:
 Notes:
     (1) You might need to unzip hsa.zip file (TransmiR dataset for TF-miRNA interactions) before using it.
     (2) As the file BRCA_matchedData_full.RData (Tumour expression data) is larger than 100 MB, we are not allowed to upload it here, you might need to download it from https://github.com/pvvhoang/CancerDriver/releases/tag/v2.0
-    
