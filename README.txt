@@ -1,7 +1,7 @@
-GroupDriver: A novel method for identifying group-based coding and non-coding cancer drivers
+DriverGroup: A novel method for identifying driver gene groups
 
 Vu VH Pham (1), Lin Liu (1), Cameron P Bracken (2,3), Gregory J Goodall (2,3), Jiuyong Li (1), and Thuc D Le (1)
-(1) School of Information Technology and Mathematical Sciences, University of South Australia, Mawson Lakes, 5095, Australia
+(1) UniSA STEM, University of South Australia, Mawson Lakes, 5095, Australia
 (2) Centre for Cancer Biology, SA Pathology, Adelaide, 5000, Australia
 (3) Department of Medicine, The University of Adelaide, Adelaide, SA 5005, Australia
 
